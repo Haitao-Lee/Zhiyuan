@@ -171,20 +171,31 @@
         <property name="toolTip">
          <string>Run segmentation on the selected CT image.</string>
         </property>
-        <property name="text">
-         <string>Run Segmentation</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </widget>
-   </item>
-   <!-- Status Log -->
-   <item>
-    <widget class="QGroupBox" name="statusGroupBox">
-     <property name="title">
-      <string>Status</string>
-     </property>
+         <property name="text">
+          <string>Run Segmentation</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <!-- Planning Parameters Button -->
+    <item>
+     <widget class="QPushButton" name="planningParamsButton">
+      <property name="text">
+       <string>Planning Parameters...</string>
+      </property>
+      <property name="toolTip">
+       <string>Configure brachytherapy planning parameters.</string>
+      </property>
+     </widget>
+    </item>
+    <!-- Status Log -->
+    <item>
+     <widget class="QGroupBox" name="statusGroupBox">
+      <property name="title">
+       <string>Status</string>
+      </property>
      <layout class="QVBoxLayout" name="verticalLayout_Status">
       <item>
        <widget class="QTextBrowser" name="statusTextBrowser">
