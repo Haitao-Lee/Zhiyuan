@@ -63,26 +63,54 @@
       <item row="0" column="1">
        <widget class="QComboBox" name="taskComboBox">
         <property name="toolTip">
-         <string>Select the segmentation task.</string>
+         <string>Select the segmentation task. TotalSegmentator tasks are provided by the TotalSegmentator extension.</string>
         </property>
         <item>
          <property name="text">
           <string>Total (all organs)</string>
          </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Lung</string>
+         <property name="userData">
+          <string>total</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Tumor</string>
+          <string>Lung: nodules</string>
+         </property>
+         <property name="userData">
+          <string>lung_nodules</string>
          </property>
         </item>
         <item>
          <property name="text">
-          <string>Prostate</string>
+          <string>Liver: segments</string>
+         </property>
+         <property name="userData">
+          <string>liver_segments</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Kidney: cysts</string>
+         </property>
+         <property name="userData">
+          <string>kidney_cysts</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Body</string>
+         </property>
+         <property name="userData">
+          <string>body</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Heart: coronary arteries [license]</string>
+         </property>
+         <property name="userData">
+          <string>coronary_arteries</string>
          </property>
         </item>
        </widget>
