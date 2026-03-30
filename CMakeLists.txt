@@ -37,8 +37,8 @@ set(Slicer_MAIN_PROJECT "ZhiyuanApp")
 set(Slicer_ORGANIZATION_DOMAIN "sjtu.edu.cn")
 set(Slicer_ORGANIZATION_NAME   "Shanghai Jiao Tong University")
 
-# Default home and favorite modules
-set(Slicer_DEFAULT_HOME_MODULE "Home")
+# Default BrachyPlan and favorite modules
+set(Slicer_DEFAULT_HOME_MODULE "BrachyPlan")
 set(Slicer_DEFAULT_FAVORITE_MODULES "Data, Volumes, Models, Transforms, Markups, SegmentEditor")
 
 # Configure SuperBuild
@@ -140,7 +140,7 @@ set(Slicer_QTSCRIPTEDMODULES_DISABLED
 set(Slicer_EXTENSION_SOURCE_DIRS
   #${Zhiyuan_SOURCE_DIR}/Modules/CLI/MyCLIModule
   #${Zhiyuan_SOURCE_DIR}/Modules/Loadable/MyLoadableModule
-  ${Zhiyuan_SOURCE_DIR}/Modules/Scripted/Home
+  ${Zhiyuan_SOURCE_DIR}/Modules/Scripted/BrachyPlan
   )
 
 # Add remote extension source directories
