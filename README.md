@@ -341,7 +341,7 @@ For questions, support, or collaboration inquiries:
 - **Releases**: [GitHub Releases](https://github.com/Haitao-Lee/Zhiyuan/releases)
 
 ### Development Team
-- **Primary Contact**: Haitao Lee (haitao.lee@sjtu.edu.cn)
+- **Primary Contact**: Haitao Lee (hunter_lee163@163.com)
 - **Affiliation**: Department of Radiation Oncology, Shanghai Jiao Tong University Affiliated Hospitals
 - **Research Group**: Medical Imaging and Radiation Therapy Optimization Lab
 
