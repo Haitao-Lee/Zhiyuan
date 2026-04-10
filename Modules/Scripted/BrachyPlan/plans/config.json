@@ -59,7 +59,7 @@
         "device": "cuda"
     },
     "iso_dose_params": {
-        "iso_dose_values": [0.8, 1, 1.5, 2.0, 4.0, 8.0, 16.0, 32.0],
+        "iso_dose_values": [96, 120, 180, 240, 480, 960, 1920, 3840],
         "iso_colors": [
             [0, 1, 0],
             [0, 1, 1],
