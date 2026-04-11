@@ -19,7 +19,7 @@
         "obstacle_value": 2,
         "background_value": 0,
         "backlit_angle": 0.5,
-        "maximum_candidate_trajectories": 500,
+        "maximum_candidate_trajectories": 300,
         "min_depth_rate": 5,
         "smooth_sigma": 1,
         "dose_img_dimention": [128, 128, 64],
@@ -78,9 +78,9 @@
     "rf_params": {
         "lr": 0.001,
         "gamma": 0.99,
-        "max_episodes": 400,
+        "max_episodes": 200,
         "print_every": 100,
-        "bandwidth": 200,
+        "bandwidth": 50,
         "hierarchical_optimization": true,
         "segmented_rewards": true,
         "flip_ratio": 1
