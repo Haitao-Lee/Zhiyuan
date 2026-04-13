@@ -19,18 +19,6 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
-     <property name="minimumSize">
-      <size>
-       <width>0</width>
-       <height>20</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>16777215</width>
-       <height>20</height>
-      </size>
-     </property>
      <property name="text">
       <string>Input Image:</string>
      </property>
@@ -38,24 +26,6 @@
    </item>
    <item>
     <widget class="qMRMLNodeComboBox" name="imageSelector">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="minimumSize">
-      <size>
-       <width>0</width>
-       <height>30</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>16777215</width>
-       <height>30</height>
-      </size>
-     </property>
      <property name="enabled">
       <bool>true</bool>
      </property>
@@ -331,7 +301,7 @@
          <string>Reference Direction (RAS)</string>
         </property>
         <property name="collapsed">
-         <bool>false</bool>
+         <bool>true</bool>
         </property>
         <layout class="QGridLayout" name="gridLayout_RefDirec">
          <item row="0" column="0">
@@ -745,18 +715,6 @@
        <verstretch>0</verstretch>
       </sizepolicy>
      </property>
-     <property name="minimumSize">
-      <size>
-       <width>0</width>
-       <height>20</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>16777215</width>
-       <height>20</height>
-      </size>
-     </property>
      <property name="text">
       <string>Input CTV:</string>
      </property>
@@ -764,24 +722,6 @@
    </item>
    <item>
     <widget class="qMRMLNodeComboBox" name="segmentedImageSelector">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="minimumSize">
-      <size>
-       <width>0</width>
-       <height>30</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>16777215</width>
-       <height>30</height>
-      </size>
-     </property>
      <property name="enabled">
       <bool>true</bool>
      </property>
@@ -810,24 +750,6 @@
    </item>
    <item>
     <widget class="QPushButton" name="planButton">
-     <property name="sizePolicy">
-      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-       <horstretch>0</horstretch>
-       <verstretch>0</verstretch>
-      </sizepolicy>
-     </property>
-     <property name="minimumSize">
-      <size>
-       <width>0</width>
-       <height>40</height>
-      </size>
-     </property>
-     <property name="maximumSize">
-      <size>
-       <width>16777215</width>
-       <height>40</height>
-      </size>
-     </property>
      <property name="text">
       <string>Generate a plan</string>
      </property>
@@ -873,14 +795,14 @@
       </item>
       <item row="0" column="2">
        <widget class="QLabel" name="doseOpacityValueLabel">
-        <property name="text">
-         <string>50%</string>
-        </property>
         <property name="minimumSize">
          <size>
           <width>35</width>
           <height>0</height>
          </size>
+        </property>
+        <property name="text">
+         <string>50%</string>
         </property>
        </widget>
       </item>
@@ -896,14 +818,14 @@
       </item>
       <item row="2" column="0" colspan="3">
        <widget class="QLabel" name="label_dvhTitle">
-        <property name="text">
-         <string>DVH Analysis</string>
-        </property>
         <property name="font">
          <font>
           <weight>75</weight>
           <bold>true</bold>
          </font>
+        </property>
+        <property name="text">
+         <string>DVH Analysis</string>
         </property>
        </widget>
       </item>
