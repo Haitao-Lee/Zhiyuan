@@ -69,36 +69,6 @@
         <property name="toolTip">
          <string>Select the segmentation task. TotalSegmentator tasks are provided by the TotalSegmentator extension.</string>
         </property>
-        <item>
-         <property name="text">
-          <string>Total (all organs)</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Lung: nodules</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Liver: segments</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Kidney: cysts</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Body</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Heart: coronary arteries [license]</string>
-         </property>
-        </item>
        </widget>
       </item>
       <item row="1" column="0">
@@ -425,7 +395,7 @@
          <string>Radiation Parameters</string>
         </property>
         <property name="collapsed">
-         <bool>false</bool>
+         <bool>true</bool>
         </property>
         <layout class="QGridLayout" name="gridLayout_RadiationParams">
          <item row="0" column="0">
@@ -537,7 +507,7 @@
          <string>Dose Constraints</string>
         </property>
         <property name="collapsed">
-         <bool>true</bool>
+         <bool>false</bool>
         </property>
         <layout class="QGridLayout" name="gridLayout_DoseConstraints">
          <item row="0" column="0">
@@ -698,17 +668,7 @@
     </widget>
    </item>
    <item>
-    <widget class="QFrame" name="separatorFrame">
-     <property name="frameShape">
-      <enum>QFrame::HLine</enum>
-     </property>
-     <property name="frameShadow">
-      <enum>QFrame::Sunken</enum>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <widget class="QLabel" name="label_2">
+    <widget class="QLabel" name="CTVLabel">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
        <horstretch>0</horstretch>
@@ -721,7 +681,7 @@
     </widget>
    </item>
    <item>
-    <widget class="qMRMLNodeComboBox" name="segmentedImageSelector">
+    <widget class="qMRMLNodeComboBox" name="CTVImageSelector">
      <property name="enabled">
       <bool>true</bool>
      </property>
@@ -739,6 +699,47 @@
      </property>
      <property name="noneEnabled">
       <bool>false</bool>
+     </property>
+     <property name="addEnabled">
+      <bool>true</bool>
+     </property>
+     <property name="removeEnabled">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="OARLabel">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>Input OAR:</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="qMRMLNodeComboBox" name="OARImageSelector">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
+     <property name="toolTip">
+      <string>Pick the input OAR segmentation.</string>
+     </property>
+     <property name="nodeTypes">
+      <stringlist notr="true">
+       <string>vtkMRMLLabelMapVolumeNode</string>
+       <string>vtkMRMLSegmentationNode</string>
+      </stringlist>
+     </property>
+     <property name="showChildNodeTypes">
+      <bool>false</bool>
+     </property>
+     <property name="noneEnabled">
+      <bool>true</bool>
      </property>
      <property name="addEnabled">
       <bool>true</bool>
