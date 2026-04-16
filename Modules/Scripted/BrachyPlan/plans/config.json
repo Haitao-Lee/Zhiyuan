@@ -19,7 +19,7 @@
         "obstacle_value": 2,
         "background_value": 0,
         "backlit_angle": 0.5,
-        "maximum_candidate_trajectories": 300,
+        "maximum_candidate_trajectories": 200,
         "min_depth_rate": 5,
         "smooth_sigma": 1,
         "dose_img_dimention": [128, 128, 64],
@@ -59,7 +59,7 @@
         "device": "cuda"
     },
     "iso_dose_params": {
-        "iso_dose_values": [96, 120, 180, 240, 480, 960, 1920, 3840],
+        "iso_dose_values": [120, 180, 240, 480],
         "iso_colors": [
             [0, 1, 0],
             [0, 1, 1],
@@ -70,7 +70,7 @@
             [0.5, 0, 0.5],
             [0, 0.5, 1]
         ],
-        "iso_opacities": [0.5, 0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1],
+        "iso_opacities": [0.3, 0.2, 0.1, 0.05],
         "num_iterations": 50,
         "rela_factor": 0.1,
         "iso_opacity": 0.3
@@ -78,8 +78,8 @@
     "rf_params": {
         "lr": 0.001,
         "gamma": 0.99,
-        "max_episodes": 200,
-        "print_every": 100,
+        "max_episodes": 100,
+        "print_every": 50,
         "bandwidth": 50,
         "hierarchical_optimization": true,
         "segmented_rewards": true,

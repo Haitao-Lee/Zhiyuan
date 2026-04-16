@@ -722,12 +722,12 @@
     </widget>
    </item>
    <item>
-    <widget class="qMRMLNodeComboBox" name="OARImageSelector">
+    <widget class="qMRMLCheckableNodeComboBox" name="OARImageSelector">
      <property name="enabled">
       <bool>true</bool>
      </property>
      <property name="toolTip">
-      <string>Pick the input OAR segmentation.</string>
+      <string>Pick the input OAR segmentation(s). Check the boxes to select multiple.</string>
      </property>
      <property name="nodeTypes">
       <stringlist notr="true">
