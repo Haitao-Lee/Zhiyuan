@@ -1,9 +1,0 @@
-QTextBrowser {
-    background-color: white;
-    color: black;
-}
-
-QTextBrowser:focus {
-    background-color: white;
-    color: black;
-}
