@@ -830,33 +830,7 @@
         </property>
        </widget>
       </item>
-      <item row="3" column="0">
-       <widget class="QLabel" name="label_prescriptionDose">
-        <property name="text">
-         <string>Rx Dose (Gy):</string>
-        </property>
-       </widget>
-      </item>
-      <item row="3" column="1" colspan="2">
-       <widget class="QDoubleSpinBox" name="prescriptionDoseSpinBox">
-        <property name="toolTip">
-         <string>Prescription dose in Gy. Used to compute V100, V150, V200 and relative DVH.</string>
-        </property>
-        <property name="minimum">
-         <double>0.100000000000000</double>
-        </property>
-        <property name="maximum">
-         <double>500.000000000000000</double>
-        </property>
-        <property name="singleStep">
-         <double>5.000000000000000</double>
-        </property>
-        <property name="value">
-         <double>120.000000000000000</double>
-        </property>
-       </widget>
-      </item>
-      <item row="4" column="0" colspan="3">
+      <item row="3" column="0" colspan="3">
        <widget class="QTextBrowser" name="dvhMetricsBrowser">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
