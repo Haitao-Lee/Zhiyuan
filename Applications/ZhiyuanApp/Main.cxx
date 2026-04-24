@@ -25,6 +25,9 @@
 #include "vtkSlicerConfigure.h" // For Slicer_MAIN_PROJECT_APPLICATION_NAME
 #include "vtkSlicerVersionConfigure.h" // For Slicer_MAIN_PROJECT_VERSION_FULL
 
+// VTK includes
+#include "vtkDebugLeaks.h"
+
 namespace
 {
 
@@ -34,6 +37,9 @@ int SlicerAppMain(int argc, char* argv[])
   typedef qZhiyuanAppMainWindow SlicerMainWindowType;
 
   qSlicerApplicationHelper::preInitializeApplication(argv[0], new qAppStyle);
+
+  vtkDebugLeaks::SetGlobalDebugLeaksFlag(0);
+  vtkDebugLeaks::SetExitError(0);
 
   qSlicerApplication app(argc, argv);
   if (app.returnCode() != -1)

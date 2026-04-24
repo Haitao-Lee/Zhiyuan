@@ -9,7 +9,7 @@
 </p>
 
 <!-- PROJECT TITLE -->
-<h1 align="center">Zhiyuan (智源——放射性粒子智能布源)</h1>
+<h1 align="center">Zhiyuan (致远)</h1>
 
 <h3 align="center">
   Intelligent Brachytherapy Treatment Planning Platform

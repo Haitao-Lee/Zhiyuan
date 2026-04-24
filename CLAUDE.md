@@ -4,92 +4,92 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **Claude Code plugin** - a collection of production-ready agents, skills, hooks, commands, rules, and MCP configurations. The project provides battle-tested workflows for software development using Claude Code.
+**Zhiyuan (致远)** is an intelligent brachytherapy treatment planning platform built on [3D Slicer](https://slicer.org/). It provides AI-powered organ segmentation, dose prediction, and treatment optimization for brachytherapy procedures.
 
-## Core Project Rules & Anti-Deception Policies
+- **Platform**: Windows 10/11 (64-bit), Linux
+- **Framework**: 3D Slicer (Qt-based medical imaging application)
+- **Languages**: Python (algorithms), C++ (application layer)
+- **ML Stack**: PyTorch, SimpleITK, TotalSegmentator
 
-- **Core Algorithm Safeguards:** Before modifying any core algorithmic logic, you MUST invoke the testing agent (e.g., `@tdd-guide`) to run existing unit tests. Refactoring foundational algorithms without test coverage is strictly prohibited.
-- **Naming & Documentation:** All new or modified functions must strictly use `snake_case`. Each function must include detailed **English comments (docstrings)** at the header that strictly comply with the **Google Style Guide**. You must clearly define input parameters (Args), output results (Returns/Yields), and any memory/edge-case handling logic.
-- **Execution & OS Awareness:** You are operating in a **Windows** environment (e.g., PowerShell). Do NOT use Linux-specific Bash commands. Before executing any system-level commands, you must pause and request explicit user confirmation.
-- **Anti-Deception & Write Verification:** Never claim to have modified, updated, or written code if you only performed read/search operations. You must explicitly verify that the file-writing process was actually executed and saved to the disk. Do not hallucinate task completions; if a write operation fails or is skipped, you must report it honestly.
+## Build & Package Commands
 
-## Medical Imaging Development Rules (Project-Specific)
+### Build (Windows)
+```bat
+# CMake GUI + Visual Studio 2022 (recommended, ~3 hours)
+# Source: C:\W\Z, Build: C:\W\ZR
 
-When working with BrachyPlan or any medical imaging module in this repository:
+# Command line build
+cmake -G "Visual Studio 17 2022" -A x64 -DQt5_DIR:PATH="C:/Qt/${QT_VERSION}/${COMPILER}/lib/cmake/Qt5" ..\Z
+cmake --build . --config Release -- /maxcpucount:4
+```
 
-1. **Context-Aware Analysis:** Always read the full context of the code before making changes. Understand the systemic impact of any modification to avoid unintended side effects.
+### Package (Windows)
+```bat
+# Requires NSIS 2 installed
+cmake --build . --config Release --target PACKAGE
+```
 
-2. **Official Documentation First:** Before modifying any code, consult official documentation (3D Slicer API, nnU-Net v2 docs, etc.) to verify that functions, methods, and attributes are correct. Do not assume or fabricate API details.
-
-3. **Plan Before Action:** Always create a detailed, feasible plan before modifying any code. The plan must include the rationale, specific changes, and verification steps.
-
-## Code Modification Workflow
-
-- **Build Directory Priority:** When modifying code, always edit the version in the build directory first (`c:\Zhiyaun\r\Slicer-build\...`). Sync to source directory only upon explicit user request.
-- **Comments in English:** All code comments must be written in English, regardless of the user's language preference.
-- **Sync When Requested:** Do NOT automatically sync changes to source directories. Wait for the user to explicitly request synchronization.
-
-## Running Tests
-
-```bash
-# Run all tests
-node tests/run-all.js
-
-# Run individual test files
-node tests/lib/utils.test.js
-node tests/lib/package-manager.test.js
-node tests/hooks/hooks.test.js
+### Run
+```bat
+# Launch from build directory
+C:\W\ZR\Slicer-build\bin\Release\Slicer.exe --python-code "import BrachyPlan"
 ```
 
 ## Architecture
 
-The project is organized into several core components:
+```
+Zhiyuan/
+├── Applications/ZhiyuanApp/      # C++ application layer (main window, styles)
+├── Modules/Scripted/
+│   ├── BrachyPlan/               # Main brachytherapy planning module
+│   │   ├── BrachyPlan.py         # Slicer module (widget, logic)
+│   │   ├── MarkupConstraints.py  # Markup node constraints
+│   │   ├── plans/                # Planning algorithms (Python)
+│   │   │   ├── brachy_plan_v2.py # Main planning entry point
+│   │   │   ├── core_v2.py        # Optimization algorithms
+│   │   │   ├── utilizations_v2.py # Image processing utilities
+│   │   │   ├── config.json       # Hyperparameters (JSON)
+│   │   │   └── dose_pre/         # CNN-based dose prediction
+│   │   └── Resources/            # Icons, UI (.ui), stylesheets
+│   └── Home/                     # Custom home module
+└── r/                            # Slicer build output, external deps
+```
 
-- **agents/** - Specialized subagents for delegation (planner, code-reviewer, tdd-guide, etc.)
-- **skills/** - Workflow definitions and domain knowledge (coding standards, patterns, testing)
-- **commands/** - Slash commands invoked by users (/tdd, /plan, /e2e, etc.)
-- **hooks/** - Trigger-based automations (session persistence, pre/post-tool hooks)
-- **rules/** - Always-follow guidelines (security, coding style, testing requirements)
-- **mcp-configs/** - MCP server configurations for external integrations
-- **scripts/** - Cross-platform Node.js utilities for hooks and setup
-- **tests/** - Test suite for scripts and utilities
+### Key Entry Points
 
-## Key Commands
+| File | Purpose |
+|------|---------|
+| `Modules/Scripted/BrachyPlan/BrachyPlan.py` | Main Slicer module (BrachyPlanWidget, BrachyPlanLogic) |
+| `Modules/Scripted/BrachyPlan/plans/brachy_plan_v2.py` | `brachy_plan()` and `brachy_plan_rf()` functions |
+| `Applications/ZhiyuanApp/Main.cxx` | Application entry point |
 
-- `/tdd` - Test-driven development workflow
-- `/plan` - Implementation planning
-- `/e2e` - Generate and run E2E tests
-- `/code-review` - Quality review
-- `/build-fix` - Fix build errors
-- `/learn` - Extract patterns from sessions
-- `/skill-create` - Generate skills from git history
+## Code Modification Workflow
 
-## Development Notes
+- **Edit Build Directory First**: Always edit code in `c:\Zhiyaun\r\Slicer-build\lib\Zhiyuan-5.9\qt-scripted-modules\` first. Sync to source (`Modules/Scripted/`) only upon explicit user request.
+- **Comments in English**: All code comments must be in English regardless of context.
+- **Windows Environment**: Use PowerShell/Bash syntax, not Linux commands. Request confirmation before system-level commands.
 
-- Package manager detection: npm, pnpm, yarn, bun (configurable via `CLAUDE_PACKAGE_MANAGER` env var or project config)
-- Cross-platform: Windows, macOS, Linux support via Node.js scripts
-- Agent format: Markdown with YAML frontmatter (name, description, tools, model)
-- Skill format: Markdown with clear sections for when to use, how it works, examples
-- Skill placement: Curated in skills/; generated/imported under ~/.claude/skills/. See docs/SKILL-PLACEMENT-POLICY.md
-- Hook format: JSON with matcher conditions and command/notification hooks
+## Medical Imaging Development Rules
 
-## Contributing
+When modifying BrachyPlan or any imaging module:
 
-Follow the formats in CONTRIBUTING.md:
-- Agents: Markdown with frontmatter (name, description, tools, model)
-- Skills: Clear sections (When to Use, How It Works, Examples)
-- Commands: Markdown with description frontmatter
-- Hooks: JSON with matcher and hooks array
+1. **Context-Aware Analysis**: Read full context before changes. Understand systemic impact.
+2. **Official Documentation First**: Consult 3D Slicer API docs before using API functions.
+3. **Plan Before Action**: Create a detailed plan including rationale, changes, and verification steps.
+4. **No Auto-Sync**: Do not automatically sync build directory changes to source.
 
-File naming: lowercase with hyphens (e.g., `python-reviewer.md`, `tdd-workflow.md`)
+## Configuration
 
-## Skills
+All hyperparameters are in `Modules/Scripted/BrachyPlan/plans/config.json`:
+- `module_constants`: NEW_SLICES_ROUNDED, SEED_LENGTH, SEED_RADIUS
+- `seed_info`: Seed geometry parameters
+- `dl_params`: Device (cuda/cpu), learning rate, loss weights
+- `radiation_array_params`: Target/obstacle values, image dimensions
+- `iso_dose_params`: Visualization isodose levels and colors
 
-Use the following skills when working on related files:
+## Important Notes
 
-| File(s) | Skill |
-|---------|-------|
-| `README.md` | `/readme` |
-| `.github/workflows/*.yml` | `/ci-workflow` |
-
-When spawning subagents, always pass conventions from the respective skill into the agent's prompt.
+- The UI file `Resources/UI/BrachyPlan.py` is **auto-generated** from `BrachyPlan.ui` - do not edit manually
+- No unit tests exist for the BrachyPlan module
+- The project uses `threading.Lock` for subprocess progress tracking - verify thread safety with Slicer API
+- The `.claude/` directory contains ECC tooling rules, not project-specific guidance
