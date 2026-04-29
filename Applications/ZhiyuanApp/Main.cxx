@@ -27,6 +27,7 @@
 
 // VTK includes
 #include "vtkDebugLeaks.h"
+#include "vtkVersionMacros.h"
 
 namespace
 {
@@ -38,8 +39,10 @@ int SlicerAppMain(int argc, char* argv[])
 
   qSlicerApplicationHelper::preInitializeApplication(argv[0], new qAppStyle);
 
+#if VTK_MAJOR_VERSION < 9
   vtkDebugLeaks::SetGlobalDebugLeaksFlag(0);
   vtkDebugLeaks::SetExitError(0);
+#endif
 
   qSlicerApplication app(argc, argv);
   if (app.returnCode() != -1)

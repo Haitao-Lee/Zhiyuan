@@ -109,3 +109,4 @@ Modules/*/Applications/
 !Modules/*/*/*.hpp
 !Modules/*/*/*.cpp
 !Modules/*/*/*.py
+.opencode

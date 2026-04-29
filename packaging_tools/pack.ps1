@@ -86,7 +86,7 @@ $errors = @()
 if (-not (Test-Path $BuildDir)) { $errors += "Build directory not found: $BuildDir" }
 if (-not (Test-Path $ModuleRoot)) { $errors += "Module root not found: $ModuleRoot" }
 if (-not (Test-Path (Join-Path $BuildDir "Zhiyuan.exe"))) { $errors += "Zhiyuan.exe not found in: $BuildDir" }
-if (-not $InnoSetupPath) { $errors += "Inno Setup ISCC.exe not found" }
+if (-not $InnoSetupPath) { Write-WarningMsg "Inno Setup ISCC.exe not found - will use 7z fallback" }
 
 if ($errors.Count -gt 0) {
     foreach ($err in $errors) { Write-ErrorOut $err }
@@ -174,7 +174,7 @@ Write-Host ""
 Write-Host "=" * 70 -ForegroundColor DarkGray
 Write-Info "STEP 3: Whitelist File Copy (Secure Packaging)"
 
-$fileStats = @{ "pyd"=0; "ui"=0; "exe"=0; "dll"=0; "pth"=0; "json"=0; "other"=0 }
+$fileStats = @{ "pyd"=0; "ui"=0; "exe"=0; "dll"=0; "pth"=0; "json"=0; "py"=0; "other"=0 }
 $totalSize = 0
 $copiedFiles = @()
 
@@ -212,13 +212,23 @@ Get-ChildItem -Path $ModuleRoot -Include "*.pyd", "*.ui" -Recurse -File | ForEac
 
 # Also copy .py files that do NOT have corresponding .pyd files
 # (Skip .py files where a compiled .pyd exists to prevent source leakage)
-Write-Detail "Copying Python source files (excluding those with compiled .pyd)..."
+# Also skip *_backup.py files and v1 version files (no .pyd, superseded by v2)
+Write-Detail "Copying Python source files (excluding those with compiled .pyd and backup/v1 files)..."
 Get-ChildItem -Path $ModuleRoot -Filter "*.py" -Recurse -File | ForEach-Object {
     $pyFile = $_
     $stem = $pyFile.BaseName
     $pydPattern = Join-Path $pyFile.DirectoryName "${stem}.*.pyd"
     $pydExists = Test-Path $pydPattern
-    if (-not $pydExists) {
+
+            # Files to exclude from packaging (no .pyd and not needed)
+    $isExcluded = $pyFile.Name -match '_backup\.py$' -or
+                  $pyFile.FullName -match '\\plans\\' -and $pyFile.Name -match '^(brachy_plan|core|utilizations)\.py$' -or
+                  $pyFile.Name -eq 'TotalSegmentator.py' -or
+                  ($pyFile.Name -eq 'BrachyPlan.py' -and $pydExists)
+
+    if ($isExcluded) {
+        Write-Detail "  Excluded: $($pyFile.Name)"
+    } elseif (-not $pydExists) {
         $relPath = $pyFile.FullName.Substring($ModuleRoot.Length)
         $destPath = Join-Path $SandboxDir "r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules$relPath"
         Copy-WhitelistFile $pyFile.FullName $destPath "py" | Out-Null
@@ -278,6 +288,24 @@ if (Test-Path $ctkSrcDir) {
     Write-WarningMsg "CTK Release directory not found: $ctkSrcDir"
 }
 
+# --- 3.5.1 CTK PythonQt Python bindings (.pyd files) ---
+# These are required for ctk Python module to work properly
+Write-Detail "Copying CTK PythonQt bindings..."
+$ctkPythonQtSrc = "C:\Zhiyaun\r\CTK-build\CTK-build\bin\Release"
+if (Test-Path $ctkPythonQtSrc) {
+    $ctkPydCount = 0
+    Get-ChildItem -Path $ctkPythonQtSrc -Filter "*.pyd" -File -ErrorAction SilentlyContinue | ForEach-Object {
+        if ($_.Name -notmatch "_d\.pyd$") {
+            Copy-WhitelistFile $_.FullName (Join-Path $ctkDestDir $_.Name) "pyd" | Out-Null
+            Write-Detail "  Copied CTK PythonQt: $($_.Name)"
+            $ctkPydCount++
+        }
+    }
+    Write-Success "CTK PythonQt bindings copied ($ctkPydCount files)"
+} else {
+    Write-WarningMsg "CTK PythonQt directory not found: $ctkPythonQtSrc"
+}
+
 # --- 3.6 DCMTK DLLs (required by Slicer DICOM support) ---
 Write-Detail "Copying ALL DCMTK DLLs..."
 $dcmtkSrcDir = "C:\Zhiyaun\r\DCMTK-build\bin\Release"
@@ -326,7 +354,7 @@ foreach ($p in $qtSrcPaths) {
 }
 if ($qtSrcDir) {
     $qtCount = 0
-    Get-ChildItem -Path $qtSrcDir -Filter "Qt5*.dll" -File -ErrorAction SilentlyContinue | ForEach-Object {
+    Get-ChildItem -Path $qtSrcDir -Filter "*.dll" -File -ErrorAction SilentlyContinue | ForEach-Object {
         if ($_.Name -notmatch "d\.dll$") {
             Copy-WhitelistFile $_.FullName (Join-Path $ctkDestDir $_.Name) "dll" | Out-Null
             Write-Detail "  Copied Qt5: $($_.Name)"
@@ -354,7 +382,7 @@ Write-Detail "Copying ALL ITK DLLs..."
 $itkSrcDir = "C:\Zhiyaun\r\ITK-build\bin\Release"
 if (Test-Path $itkSrcDir) {
     $itkCount = 0
-    Get-ChildItem -Path $itkSrcDir -Filter "ITK*.dll" -File -ErrorAction SilentlyContinue | ForEach-Object {
+    Get-ChildItem -Path $itkSrcDir -Filter "*.dll" -File -ErrorAction SilentlyContinue | ForEach-Object {
         if ($_.Name -notmatch "_d\.dll$") {
             Copy-WhitelistFile $_.FullName (Join-Path $ctkDestDir $_.Name) "dll" | Out-Null
             Write-Detail "  Copied ITK: $($_.Name)"
@@ -474,10 +502,23 @@ foreach ($pattern in $jsonPatterns) {
 }
 $segRoot = Join-Path $ModuleRoot "plans\seg"
 if (Test-Path $segRoot) {
-    Get-ChildItem -Path $segRoot -Filter "*.json" -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object {
+    Get-ChildItem -Path $segRoot -Filter "*.json" -Recurse -File -ErrorAction SilentlyContinue | Where-Object {
+        $_.FullName -notmatch '__MACOSX' -and $_.Name -notmatch '^\\._' -and $_.Name -notmatch '\\.DS_Store$'
+    } | ForEach-Object {
         $relPath = $_.FullName.Substring($ModuleRoot.Length)
         $destPath = Join-Path $SandboxDir "r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules$relPath"
         Copy-WhitelistFile $_.FullName $destPath "json" | Out-Null
+    }
+    # Also copy .zip, .png, .txt files in seg directory (model archives, progress images, docs)
+    # Exclude macOS artifacts
+    foreach ($ext in @("*.zip", "*.png", "*.txt")) {
+        Get-ChildItem -Path $segRoot -Filter $ext -Recurse -File -ErrorAction SilentlyContinue | Where-Object {
+            $_.FullName -notmatch '__MACOSX' -and $_.Name -notmatch '^\\._' -and $_.Name -notmatch '\\.DS_Store$'
+        } | ForEach-Object {
+            $relPath = $_.FullName.Substring($ModuleRoot.Length)
+            $destPath = Join-Path $SandboxDir "r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules$relPath"
+            Copy-WhitelistFile $_.FullName $destPath "other" | Out-Null
+        }
     }
 }
 Write-Success "Configuration files copied ($($fileStats['json']) .json files)"
@@ -485,15 +526,15 @@ Write-Success "Configuration files copied ($($fileStats['json']) .json files)"
 # --- 3.7 Resources Directory ---
 # Resources/ contains icons, stylesheets, UI files, JSON configs, and some Slicer framework .py modules.
 # The .py files here (e.g., SlicerWizard) are Slicer framework code, NOT our IP. Keep them.
-Write-Detail "Copying resources (ALL files recursively, excluding __pycache__)..."
+Write-Detail "Copying resources (ALL files recursively, excluding __pycache__ and macOS artifacts)..."
 $resDir = Join-Path $ModuleRoot "Resources"
 if (Test-Path $resDir) {
     $resDestDir = Join-Path $SandboxDir "r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\Resources"
     $resFileCount = 0
     Get-ChildItem -Path $resDir -Recurse -File | Where-Object {
         # Keep ALL files including .py (Slicer framework modules)
-        # Only exclude __pycache__ directories
-        $_.FullName -notmatch '__pycache__'
+        # Exclude __pycache__ and macOS artifacts
+        $_.FullName -notmatch '__pycache__|__MACOSX' -and $_.Name -notmatch '^\\._' -and $_.Name -notmatch '\\.DS_Store$'
     } | ForEach-Object {
         # Use TrimStart to avoid Join-Path issues with leading backslash from Substring
         $relPath = $_.FullName.Substring($resDir.Length).TrimStart('\')
@@ -611,6 +652,7 @@ if (Test-Path $binDir) {
 
     # STEP B: Copy other bin/ files (excluding .py source to protect our IP)
     # Only exclude .py files that are NOT in bin/Python/ (bin/Python was handled above)
+    # Keep ALL DLLs including lowercase ctk DLLs - both versions may be needed
     Get-ChildItem -Path $binDir -Recurse -File | Where-Object {
         $inBinPython = $_.FullName -like "$binPythonDir\*"
         -not $inBinPython -and
@@ -683,6 +725,30 @@ if (Test-Path $pythonInstallDir) {
     Write-ErrorOut "python-install directory not found! Python runtime will be missing."
 }
 
+# --- 3.10.1.1 CTK Python packages (ctk, qt) required for Slicer modules ---
+# CTK Python packages are in CTK-build/bin/Python and are remapped to lib/Python/Lib
+Write-Detail "Copying CTK Python packages (ctk, qt)..."
+$ctkPythonSrc = "C:\Zhiyaun\r\CTK-build\CTK-build\bin\Python"
+$ctkPythonDest = Join-Path $SandboxDir "r\Zhiyuan-build\lib\Python\Lib"
+if (Test-Path $ctkPythonSrc) {
+    $ctkCount = 0
+    Get-ChildItem -Path $ctkPythonSrc -Recurse -File | ForEach-Object {
+        $relPath = $_.FullName.Substring($ctkPythonSrc.Length).TrimStart('\')
+        $destPath = Join-Path $ctkPythonDest $relPath
+        $type = switch -Regex ($_.Extension) {
+            '\.py$' { "py" }
+            '\.pyd$' { "pyd" }
+            '\.dll$' { "dll" }
+            default { "other" }
+        }
+        Copy-WhitelistFile $_.FullName $destPath $type | Out-Null
+        $ctkCount++
+    }
+    Write-Detail "  CTK Python packages copied ($ctkCount files)"
+} else {
+    Write-WarningMsg "CTK Python packages not found at: $ctkPythonSrc"
+}
+
 # --- 3.10.2 Qt Plugins (CRITICAL for GUI - per ZhiyuanLauncherSettingsToInstall.ini) ---
 Write-Detail "Copying Qt plugins to lib/QtPlugins..."
 $qtPluginSrcPaths = @(
@@ -701,7 +767,7 @@ foreach ($srcPath in $qtPluginSrcPaths) {
 
 if ($qtPluginSrc) {
     $qtPluginDestBase = Join-Path $SandboxDir "r\Zhiyuan-build\lib\QtPlugins"
-    $subDirs = @("platforms", "styles", "imageformats", "iconengines")
+    $subDirs = @("platforms", "styles", "imageformats", "iconengines", "sqldrivers")
     foreach ($subDir in $subDirs) {
         $srcSubDir = Join-Path $qtPluginSrc $subDir
         if (Test-Path $srcSubDir) {
@@ -724,6 +790,17 @@ if ($qtPluginSrc) {
             Copy-WhitelistFile $_.FullName (Join-Path $binPlatformsDir $_.Name) "dll" | Out-Null
         }
         Write-Success "Qt platform plugins copied to bin/Release/platforms"
+    }
+    # ALSO copy sqldrivers to bin/Release for Qt SQL (CTK DICOM database)
+    $binSqlDriversDir = Join-Path $SandboxDir "r\Zhiyuan-build\bin\Release\sqldrivers"
+    $srcSqlDriversDir = Join-Path $qtPluginSrc "sqldrivers"
+    if (Test-Path $srcSqlDriversDir) {
+        Get-ChildItem -Path $srcSqlDriversDir -Filter "*.dll" -File -ErrorAction SilentlyContinue | Where-Object {
+            $_.Name -notmatch "_d\.dll$"
+        } | ForEach-Object {
+            Copy-WhitelistFile $_.FullName (Join-Path $binSqlDriversDir $_.Name) "dll" | Out-Null
+        }
+        Write-Success "Qt sqldrivers copied to bin/Release/sqldrivers"
     }
     Write-Success "Qt plugins copied to lib/QtPlugins"
 } else {
@@ -759,6 +836,45 @@ $binIniSrc1 = Join-Path $BuildDir "ZhiyuanLauncherSettings.ini"
 $binIniSrc2 = Join-Path $BuildDir "ZhiyuanLauncherSettingsToInstall.ini"
 if (Test-Path $binIniSrc1) { Copy-WhitelistFile $binIniSrc1 $binIniDest1 "other" | Out-Null; Write-Detail "  Copied to bin/: ZhiyuanLauncherSettings.ini" }
 if (Test-Path $binIniSrc2) { Copy-WhitelistFile $binIniSrc2 $binIniDest2 "other" | Out-Null; Write-Detail "  Copied to bin/: ZhiyuanLauncherSettingsToInstall.ini" }
+
+# FIX: Paths in bin/ copies of settings INIs must use ../ prefix since those INIs
+# live in bin/ (not bin/Release/) so <APPLAUNCHER_SETTINGS_DIR> resolves differently
+$binIniFiles = @($binIniDest1, $binIniDest2)
+foreach ($binIni in $binIniFiles) {
+    if (Test-Path $binIni) {
+        $lines = Get-Content $binIni -Raw -Encoding UTF8 -ErrorAction Stop
+        $originalContent = $lines
+        $newLines = @()
+        foreach ($line in $lines -split "`n") {
+            # Fix: <APPLAUNCHER_SETTINGS_DIR>/lib/Python -> <APPLAUNCHER_SETTINGS_DIR>/../lib/Python
+            if ($line -match '<APPLAUNCHER_SETTINGS_DIR>/lib/Python' -and $line -notmatch '<APPLAUNCHER_SETTINGS_DIR>/\.\./lib/Python') {
+                $line = $line -replace '<APPLAUNCHER_SETTINGS_DIR>/lib/Python', '<APPLAUNCHER_SETTINGS_DIR>/../lib/Python'
+            }
+            # Fix: <APPLAUNCHER_SETTINGS_DIR>/lib/QtPlugins -> <APPLAUNCHER_SETTINGS_DIR>/../lib/QtPlugins
+            if ($line -match '<APPLAUNCHER_SETTINGS_DIR>/lib/QtPlugins' -and $line -notmatch '<APPLAUNCHER_SETTINGS_DIR>/\.\./lib/QtPlugins') {
+                $line = $line -replace '<APPLAUNCHER_SETTINGS_DIR>/lib/QtPlugins', '<APPLAUNCHER_SETTINGS_DIR>/../lib/QtPlugins'
+            }
+            # Fix: <APPLAUNCHER_SETTINGS_DIR>/lib/Zhiyuan-5.9 -> <APPLAUNCHER_SETTINGS_DIR>/../lib/Zhiyuan-5.9
+            if ($line -match '<APPLAUNCHER_SETTINGS_DIR>/lib/Zhiyuan-5.9' -and $line -notmatch '<APPLAUNCHER_SETTINGS_DIR>/\.\./lib/Zhiyuan-5.9') {
+                $line = $line -replace '<APPLAUNCHER_SETTINGS_DIR>/lib/Zhiyuan-5.9', '<APPLAUNCHER_SETTINGS_DIR>/../lib/Zhiyuan-5.9'
+            }
+            # Fix: <APPLAUNCHER_SETTINGS_DIR>/bin/Release -> <APPLAUNCHER_SETTINGS_DIR>/../bin/Release
+            if ($line -match '<APPLAUNCHER_SETTINGS_DIR>/bin/Release' -and $line -notmatch '<APPLAUNCHER_SETTINGS_DIR>/\.\./bin/Release') {
+                $line = $line -replace '<APPLAUNCHER_SETTINGS_DIR>/bin/Release', '<APPLAUNCHER_SETTINGS_DIR>/../bin/Release'
+            }
+            # Fix: <APPLAUNCHER_SETTINGS_DIR>/bin/Python -> <APPLAUNCHER_SETTINGS_DIR>/../bin/Python
+            if ($line -match '<APPLAUNCHER_SETTINGS_DIR>/bin/Python' -and $line -notmatch '<APPLAUNCHER_SETTINGS_DIR>/\.\./bin/Python') {
+                $line = $line -replace '<APPLAUNCHER_SETTINGS_DIR>/bin/Python', '<APPLAUNCHER_SETTINGS_DIR>/../bin/Python'
+            }
+            $newLines += $line
+        }
+        $content = $newLines -join "`n"
+        if ($content -ne $originalContent) {
+            Set-Content -Path $binIni -Value $content -Encoding UTF8 -ErrorAction Stop
+            Write-Detail "  Fixed paths in bin/ INI: $($binIni.Substring($SandboxDir.Length))"
+        }
+    }
+}
 
 # Explicitly patch absolute python-install paths in ALL INI files (belt-and-suspenders)
 $allIniFiles = Get-ChildItem -Path $SandboxDir -Recurse -Filter "*.ini" -File -ErrorAction SilentlyContinue
@@ -814,8 +930,9 @@ foreach ($pyFile in $pyFiles) {
     $pydPattern = Join-Path $pyFile.DirectoryName "${stem}.*.pyd"
     $pydExists = Test-Path $pydPattern
 
-    if ($pydExists) {
+    if ($pydExists -and $pyFile.Name -ne 'BrachyPlan.py') {
         # Compiled .pyd exists - safe to remove .py source
+        # EXCEPT: BrachyPlan.py must be kept (Slicer needs .py for module registration)
         Remove-Item $pyFile.FullName -Force -ErrorAction SilentlyContinue
         $removedCount++
         Write-Detail "  Removed (has .pyd): $($pyFile.Name)"
@@ -833,7 +950,84 @@ if ($keptList.Count -gt 0) {
     foreach ($k in $keptList) { Write-Detail "  - $k" }
 }
 
+# ============================================================================
+# STEP 3.5b: Cleanup leftover source files in plans/ directory
+# Remove backup files (*_backup.py) and v1 version files that have v2 .pyd
+# ============================================================================
+Write-Host ""
+Write-Info "STEP 3.5b: Cleaning up plans/ leftover source files..."
+$plansDir = Join-Path $SandboxDir "r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\plans"
+$cleanedCount = 0
+
+# Remove backup files
+Get-ChildItem -Path $plansDir -Filter "*_backup.py" -File -ErrorAction SilentlyContinue | ForEach-Object {
+    Write-Detail "  Removed backup: $($_.Name)"
+    Remove-Item $_.FullName -Force
+    $cleanedCount++
+}
+
+# Remove v1 source files that have v2 .pyd (brachy_plan.py, core.py, utilizations.py)
+$v1Files = @("brachy_plan.py", "core.py", "utilizations.py")
+foreach ($v1File in $v1Files) {
+    $v1Path = Join-Path $plansDir $v1File
+    $v2Pyd = Join-Path $plansDir "$($v1File -replace '\.py$', '_v2.cp312-win_amd64.pyd')"
+    if ((Test-Path $v1Path) -and (Test-Path $v2Pyd)) {
+        Write-Detail "  Removed v1 source (has v2.pyd): $v1File"
+        Remove-Item $v1Path -Force
+        $cleanedCount++
+    }
+}
+
+if ($cleanedCount -gt 0) {
+    Write-Success "Cleaned $cleanedCount leftover source file(s)"
+} else {
+    Write-Detail "  No cleanup needed"
+}
+
 Write-Success "Files copied successfully ($($copiedFiles.Count) files, $([math]::Round($totalSize / 1MB, 2)) MB)"
+
+# ============================================================================
+# STEP 3.6d: Fix DLL case sensitivity (Windows DLL loading quirk)
+# Some DLLs have lowercase names (ctkimageprocessingitkcore.dll) but the
+# application loads them with mixed case (CTKImageProcessingITKCore.dll).
+# Create case-correct copies to ensure DLL loading works.
+# ALSO copy any missing CTK DLLs from Slicer-build that weren't in CTK-build.
+# ============================================================================
+Write-Host ""
+Write-Host "=" * 70 -ForegroundColor DarkGray
+Write-Info "STEP 3.6d: Fixing DLL case sensitivity and copying missing DLLs"
+$ctkDllMappings = @{
+    "ctkimageprocessingitkcore.dll" = "CTKImageProcessingITKCore.dll"
+    "ctkdicomcore.dll" = "CTKDICOMCore.dll"
+}
+$releaseDir = Join-Path $SandboxDir "r\Zhiyuan-build\bin\Release"
+$slicerBinRelease = Join-Path $BuildDir "bin\Release"
+$caseFixCount = 0
+$missingCopyCount = 0
+
+foreach ($srcName in $ctkDllMappings.Keys) {
+    $correctName = $ctkDllMappings[$srcName]
+    $srcPath = Join-Path $releaseDir $srcName
+    $destPath = Join-Path $releaseDir $correctName
+
+    if ((Test-Path $srcPath) -and (-not (Test-Path $destPath))) {
+        # Case-correct copy exists in sandbox - just rename it
+        Copy-Item $srcPath $destPath -Force
+        Write-Detail "  Created case-correct copy: $correctName"
+        $caseFixCount++
+    } elseif (-not (Test-Path $destPath)) {
+        # DLL not in sandbox - copy from Slicer-build directly
+        $slicerSrcPath = Join-Path $slicerBinRelease $srcName
+        if (Test-Path $slicerSrcPath) {
+            Copy-Item $slicerSrcPath $destPath -Force
+            Write-Detail "  Copied missing DLL from Slicer-build: $srcName -> $correctName"
+            $missingCopyCount++
+        } else {
+            Write-WarningMsg "  Missing DLL not found in Slicer-build: $srcName"
+        }
+    }
+}
+Write-Success "DLL case fix complete ($caseFixCount copies, $missingCopyCount missing DLLs copied)"
 
 # ============================================================================
 # STEP 3.6b: Fix ToInstall INI structure mismatch
@@ -866,6 +1060,51 @@ if ((Test-Path $binRelDevIni) -and (Test-Path $binRelInstallIni)) {
     Write-Detail "  Rebased bin/Release/ ToInstall INI on dev INI"
 }
 
+# --- 3.6b.1: Re-apply bin/ INI path fixes after STEP 3.6b overwrite ---
+# STEP 3.6b overwrites bin/ INIs with dev INI (which has wrong paths for bin/ location).
+# Re-apply the ../ prefix fix for all bin/ and bin/Release/ INI copies.
+$binIniFixFiles = @(
+    (Join-Path $SandboxDir "r\Zhiyuan-build\bin\ZhiyuanLauncherSettings.ini"),
+    (Join-Path $SandboxDir "r\Zhiyuan-build\bin\ZhiyuanLauncherSettingsToInstall.ini"),
+    (Join-Path $SandboxDir "r\Zhiyuan-build\bin\Release\ZhiyuanLauncherSettings.ini"),
+    (Join-Path $SandboxDir "r\Zhiyuan-build\bin\Release\ZhiyuanLauncherSettingsToInstall.ini")
+)
+foreach ($binIni in $binIniFixFiles) {
+    if (Test-Path $binIni) {
+        $lines = Get-Content $binIni -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+        $originalContent = $lines
+        $newLines = @()
+        foreach ($line in $lines -split "`n") {
+            # Fix: <APPLAUNCHER_SETTINGS_DIR>/lib/Python -> <APPLAUNCHER_SETTINGS_DIR>/../lib/Python
+            if ($line -match '<APPLAUNCHER_SETTINGS_DIR>/lib/Python' -and $line -notmatch '<APPLAUNCHER_SETTINGS_DIR>/\.\./lib/Python') {
+                $line = $line -replace '<APPLAUNCHER_SETTINGS_DIR>/lib/Python', '<APPLAUNCHER_SETTINGS_DIR>/../lib/Python'
+            }
+            # Fix: <APPLAUNCHER_SETTINGS_DIR>/lib/QtPlugins -> <APPLAUNCHER_SETTINGS_DIR>/../lib/QtPlugins
+            if ($line -match '<APPLAUNCHER_SETTINGS_DIR>/lib/QtPlugins' -and $line -notmatch '<APPLAUNCHER_SETTINGS_DIR>/\.\./lib/QtPlugins') {
+                $line = $line -replace '<APPLAUNCHER_SETTINGS_DIR>/lib/QtPlugins', '<APPLAUNCHER_SETTINGS_DIR>/../lib/QtPlugins'
+            }
+            # Fix: <APPLAUNCHER_SETTINGS_DIR>/lib/Zhiyuan-5.9 -> <APPLAUNCHER_SETTINGS_DIR>/../lib/Zhiyuan-5.9
+            if ($line -match '<APPLAUNCHER_SETTINGS_DIR>/lib/Zhiyuan-5.9' -and $line -notmatch '<APPLAUNCHER_SETTINGS_DIR>/\.\./lib/Zhiyuan-5.9') {
+                $line = $line -replace '<APPLAUNCHER_SETTINGS_DIR>/lib/Zhiyuan-5.9', '<APPLAUNCHER_SETTINGS_DIR>/../lib/Zhiyuan-5.9'
+            }
+            # Fix: <APPLAUNCHER_SETTINGS_DIR>/bin/Release -> <APPLAUNCHER_SETTINGS_DIR>/../bin/Release
+            if ($line -match '<APPLAUNCHER_SETTINGS_DIR>/bin/Release' -and $line -notmatch '<APPLAUNCHER_SETTINGS_DIR>/\.\./bin/Release') {
+                $line = $line -replace '<APPLAUNCHER_SETTINGS_DIR>/bin/Release', '<APPLAUNCHER_SETTINGS_DIR>/../bin/Release'
+            }
+            # Fix: <APPLAUNCHER_SETTINGS_DIR>/bin/Python -> <APPLAUNCHER_SETTINGS_DIR>/../bin/Python
+            if ($line -match '<APPLAUNCHER_SETTINGS_DIR>/bin/Python' -and $line -notmatch '<APPLAUNCHER_SETTINGS_DIR>/\.\./bin/Python') {
+                $line = $line -replace '<APPLAUNCHER_SETTINGS_DIR>/bin/Python', '<APPLAUNCHER_SETTINGS_DIR>/../bin/Python'
+            }
+            $newLines += $line
+        }
+        $content = $newLines -join "`n"
+        if ($content -ne $originalContent) {
+            Set-Content -Path $binIni -Value $content -Encoding UTF8 -ErrorAction SilentlyContinue
+            Write-Detail "  Re-fixed bin/ INI paths: $($binIni.Substring($SandboxDir.Length))"
+        }
+    }
+}
+
 # --- 3.6c: Copy SplashScreen.png (required by launcher) ---
 Write-Detail "Copying SplashScreen.png..."
 $splashSrc = "C:\Zhiyaun\Applications\ZhiyuanApp\Resources\Images\SplashScreen.png"
@@ -877,10 +1116,17 @@ if (Test-Path $splashSrc) {
     Write-WarningMsg "SplashScreen.png not found at: $splashSrc"
 }
 
+Write-Host "[DEBUG] About to enter STEP 3.7..." -ForegroundColor Yellow
+
 # ============================================================================
 # STEP 3.7: Deep Path Substitution - Slicer-build -> Zhiyuan-build
-# Replace Slicer-build with Zhiyuan-build in ALL configuration files
+# Replace Slicer-build with Zhiyuan-build in LAUNCHER INI FILES ONLY
 # This is critical for the launcher to find correct paths at runtime
+#
+# OPTIMIZED: Only process 8 launcher config files instead of 13000+ files.
+# The 6 launcher INIs (*LauncherSettings.ini / *ToInstall.ini) are the only
+# files that need path substitution - all other *.ini files (numpy, nibabel, etc.)
+# are Python packages that should NOT be modified.
 # ============================================================================
 Write-Host ""
 Write-Host "=" * 70 -ForegroundColor DarkGray
@@ -896,8 +1142,10 @@ $pathReplacements = [ordered]@{
     # Fix dev machine Qt path (backslash)
     "C:\LHT_workspace\code\Qt5.15\5.15.2\msvc2019_64\bin" = "<APPLAUNCHER_SETTINGS_DIR>/lib/QtPlugins"
     # Fix ../lib/ paths (dev INI assumes launcher in bin/, but ours is at root)
-    "../lib/Zhiyuan-5.9/qt-loadable-modules" = "<APPLAUNCHER_SETTINGS_DIR>/lib/Zhiyuan-5.9/qt-loadable-modules"
-    "../lib/Zhiyuan-5.9/qt-loadable-modules/Release" = "<APPLAUNCHER_SETTINGS_DIR>/lib/Zhiyuan-5.9/qt-loadable-modules/Release"
+    # These are CORRECT for root-level INIs - DO NOT replace them!
+    # They will be fixed later for bin/ copies
+    # "../lib/Zhiyuan-5.9/qt-loadable-modules" is kept as-is
+    "../lib/Zhiyuan-5.9/qt-loadable-modules/Release" = "PRESERVE_ORIGINAL"
     # Fix all external build paths to point to bin/Release (where DLLs were copied)
     "C:/Zhiyaun/r/VTK-build/bin/Release" = "<APPLAUNCHER_SETTINGS_DIR>/bin/Release"
     "C:/Zhiyaun/r/ITK-build/bin/Release" = "<APPLAUNCHER_SETTINGS_DIR>/bin/Release"
@@ -931,36 +1179,55 @@ $pathReplacements = [ordered]@{
     # Fix SSL cert path
     "C:/Zhiyaun/r/Slicer-build/share/Zhiyuan-5.9/Slicer.crt" = "<APPLAUNCHER_SETTINGS_DIR>/share/Zhiyuan-5.9/Slicer.crt"
     "C:\Zhiyaun\r\Slicer-build\share\Zhiyuan-5.9\Slicer.crt" = "<APPLAUNCHER_SETTINGS_DIR>/share/Zhiyuan-5.9/Slicer.crt"
-    # Fix SplashScreen path
+    # Fix SplashScreen path - MUST be before Slicer-build replacement!
     "C:/Zhiyaun/Applications/ZhiyuanApp/Resources/Images/SplashScreen.png" = "<APPLAUNCHER_SETTINGS_DIR>/share/Zhiyuan-5.9/SplashScreen.png"
     "C:\Zhiyaun\Applications\ZhiyuanApp\Resources\Images\SplashScreen.png" = "<APPLAUNCHER_SETTINGS_DIR>/share/Zhiyuan-5.9/SplashScreen.png"
-    # Slicer-build -> Zhiyuan-build (MUST be last to avoid interfering with SLICER_HOME replacement)
+    # Slicer-build -> Zhiyuan-build (MUST be last to avoid interfering with more specific replacements)
     "Slicer-build" = "Zhiyuan-build"
 }
 
-$configExtensions = @("*.ini", "*.bat", "*.txt")
+Write-Host "[DEBUG] pathReplacements defined, count=$($pathReplacements.Count)" -ForegroundColor Yellow
+
+# OPTIMIZED: Only target the 8 launcher INI files - don't scan 13000+ files
+# Includes root-level INIs that were previously missed
+$launcherIniFiles = @(
+    (Join-Path $SandboxDir "r\Zhiyuan-build\ZhiyuanLauncherSettings.ini"),
+    (Join-Path $SandboxDir "r\Zhiyuan-build\ZhiyuanLauncherSettingsToInstall.ini"),
+    (Join-Path $SandboxDir "r\Zhiyuan-build\bin\ZhiyuanLauncherSettings.ini"),
+    (Join-Path $SandboxDir "r\Zhiyuan-build\bin\ZhiyuanLauncherSettingsToInstall.ini"),
+    (Join-Path $SandboxDir "r\Zhiyuan-build\bin\SlicerDesignerLauncherSettings.ini"),
+    (Join-Path $SandboxDir "r\Zhiyuan-build\bin\SlicerDesignerLauncherSettingsToInstall.ini"),
+    (Join-Path $SandboxDir "r\Zhiyuan-build\lib\Python\bin\PythonSlicerLauncherSettings.ini"),
+    (Join-Path $SandboxDir "r\Zhiyuan-build\lib\Python\bin\PythonSlicerLauncherSettingsToInstall.ini")
+)
+
 $totalReplacements = 0
 
-foreach ($ext in $configExtensions) {
-    $files = Get-ChildItem -Path $SandboxDir -Recurse -Filter $ext -File -ErrorAction SilentlyContinue
-    foreach ($file in $files) {
-        $content = Get-Content $file.FullName -Raw -Encoding UTF8
-        $modified = $false
-        foreach ($key in $pathReplacements.Keys) {
-            if ($content -match [regex]::Escape($key)) {
-                $content = $content -replace [regex]::Escape($key), $pathReplacements[$key]
-                $modified = $true
-                $totalReplacements++
-            }
+Write-Host "[DEBUG] Processing $($launcherIniFiles.Count) launcher INI files..." -ForegroundColor Yellow
+foreach ($file in $launcherIniFiles) {
+    if (-not (Test-Path $file)) {
+        Write-WarningMsg "Launcher INI not found, skipping: $($file.Substring($SandboxDir.Length))"
+        continue
+    }
+    $content = Get-Content $file -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+    if (-not $content) { continue }
+    $modified = $false
+    foreach ($key in $pathReplacements.Keys) {
+        $newValue = $pathReplacements[$key]
+        if ($newValue -eq "PRESERVE_ORIGINAL") { continue }
+        if ($content -match [regex]::Escape($key)) {
+            $content = $content -replace [regex]::Escape($key), $newValue
+            $modified = $true
+            $totalReplacements++
         }
-        if ($modified) {
-            Set-Content -Path $file.FullName -Value $content -Encoding UTF8
-            Write-Detail "  Patched: $($file.FullName.Substring($SandboxDir.Length))"
-        }
+    }
+    if ($modified) {
+        Set-Content -Path $file -Value $content -Encoding UTF8 -ErrorAction SilentlyContinue
+        Write-Detail "  Patched: $($file.Substring($SandboxDir.Length))"
     }
 }
 
-# Also patch the setup_config.bat and Debug_Run.bat content (already copied but may have old paths)
+# Also patch setup_config.bat and Debug_Run.bat content (already copied but may have old paths)
 $setupBatInSandbox = Join-Path $SandboxDir "setup_config.bat"
 if (Test-Path $setupBatInSandbox) {
     $setupContent = Get-Content $setupBatInSandbox -Raw -Encoding UTF8
@@ -984,6 +1251,39 @@ if (Test-Path $debugBatInSandbox) {
 }
 
 Write-Success "Path substitution complete ($totalReplacements files patched)"
+
+# ============================================================================
+# STEP 3.7a: RENAME PHYSICAL FOLDERS - DISABLED
+# DO NOT RENAME Slicer-5.9 folders! C++ modules have hardcoded Slicer-5.9 paths.
+# Renaming causes SubjectHierarchy, Segmentations, DICOM etc to fail loading.
+# ============================================================================
+# Write-Host ""
+# Write-Host "=" * 70 -ForegroundColor DarkGray
+# Write-Info "STEP 3.7a: Renaming Physical Folders (Slicer-5.9 -> Zhiyuan-5.9)"
+#
+# $foldersToRename = @(
+#     (Join-Path $SandboxDir "r\Zhiyuan-build\lib\Slicer-5.9"),
+#     (Join-Path $SandboxDir "r\Zhiyuan-build\share\Slicer-5.9")
+# )
+# foreach ($folder in $foldersToRename) {
+#     if (Test-Path $folder) {
+#         $parent = Split-Path $folder -Parent
+#         try {
+#             Rename-Item -Path $folder -NewName "Zhiyuan-5.9" -ErrorAction Stop
+#             Write-Success "Renamed folder: $($folder.Substring($SandboxDir.Length)) -> Zhiyuan-5.9"
+#         } catch {
+#             $expectedNewPath = Join-Path $parent "Zhiyuan-5.9"
+#             if (Test-Path $expectedNewPath) {
+#                 Write-WarningMsg "Target already exists, skipping: $expectedNewPath"
+#             } else {
+#                 Write-ErrorOut "Failed to rename folder: $folder -> $_"
+#             }
+#         }
+#     } else {
+#         Write-Detail "Folder not found (may already be renamed): $($folder.Substring($SandboxDir.Length))"
+#     }
+# }
+Write-Detail "STEP 3.7a DISABLED - Slicer-5.9 folders preserved (C++ modules have hardcoded paths)"
 
 # ============================================================================
 # STEP 3.7b: Set Extensions Directory to User-Writable Location
@@ -1026,7 +1326,7 @@ foreach ($iniFile in $allIniFiles) {
         if (-not $hasIt) {
             $newLines = @()
             for ($i = 0; $i -lt $endIdx; $i++) { $newLines += $lines[$i] }
-            $newLines += "SLICER_EXTENSIONS_DIR=%LOCALAPPDATA%\Zhiyuan\Extensions-33740"
+            $newLines += "SLICER_EXTENSIONS_DIR=%LOCALAPPDATA%/Zhiyuan/Extensions-33740"
             for ($i = $endIdx; $i -lt $lines.Count; $i++) { $newLines += $lines[$i] }
             Set-Content -Path $iniFile.FullName -Value $newLines -Encoding UTF8
             $extDirCount++
