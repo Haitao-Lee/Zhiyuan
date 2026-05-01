@@ -9,7 +9,7 @@
 </p>
 
 <!-- PROJECT TITLE -->
-<h1 align="center">Zhiyuan (致远)</h1>
+<h1 align="center">Zhiyuan (智源)</h1>
 
 <h3 align="center">
   Intelligent Brachytherapy Treatment Planning Platform
@@ -37,7 +37,7 @@
 
 ## Overview
 
-Zhiyuan (致远, meaning "Boundless Horizon") is a specialized medical imaging platform built upon [3D Slicer](https://www.slicer.org/), developed by researchers at Shanghai Jiao Tong University and Ruijin Hospital.
+Zhiyuan (智源, meaning "Boundless Horizon") is a specialized medical imaging platform built upon [3D Slicer](https://www.slicer.org/), developed by researchers at Shanghai Jiao Tong University and Ruijin Hospital.
 
 The platform provides sophisticated tools for:
 - Medical image segmentation (CT, MRI, PET)
