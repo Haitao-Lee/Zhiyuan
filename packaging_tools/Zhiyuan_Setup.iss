@@ -39,7 +39,7 @@ VersionInfoProductVersion={#MyAppVersion}
 DefaultDirName={autopf}\Zhiyuan
 DefaultGroupName=Zhiyuan
 OutputBaseFilename=Zhiyuan-Installer
-OutputDir=..\releases
+OutputDir=C:\Zhiyaun\releases
 DisableProgramGroupPage=no
 AllowNoIcons=yes
 UninstallDisplayIcon={app}\r\Zhiyuan-build\{#MyAppExeName}
@@ -50,7 +50,8 @@ WizardStyle=modern
 Compression=lzma2/ultra64
 SolidCompression=yes
 InternalCompressLevel=ultra
-DiskSpanning=no
+DiskSpanning=yes
+DiskSliceSize=2000000000
 MinVersion=6.1sp1
 PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
@@ -85,17 +86,20 @@ Name: "vcredist"; Description: "Visual C++ Runtime"; Types: full compact custom
 Source: "TempRelease\r\Zhiyuan-build\Zhiyuan.exe"; DestDir: "{app}\r\Zhiyuan-build\"; Components: core; Flags: ignoreversion
 
 ; === Slicer bin directory (ALL contents including Release/) ===
-Source: "TempRelease\r\Zhiyuan-build\bin\*"; DestDir: "{app}\r\Zhiyuan-build\bin\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
-Source: "TempRelease\r\Zhiyuan-build\bin\Release\*"; DestDir: "{app}\r\Zhiyuan-build\bin\Release\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "TempRelease\r\Zhiyuan-build\bin\*"; DestDir: "{app}\r\Zhiyuan-build\bin\"; Components: core; Excludes: "*.7z"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "TempRelease\r\Zhiyuan-build\bin\Release\*"; DestDir: "{app}\r\Zhiyuan-build\bin\Release\"; Components: core; Excludes: "*.7z"; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 ; === Python installation (lib/Python) ===
 ; Must match PYTHONHOME in ZhiyuanLauncherSettingsToInstall.ini (=../lib/Python)
 ; Split into root + key subdirs to avoid ISS recursive wildcard issues with 50k+ files
 Source: "TempRelease\r\Zhiyuan-build\lib\Python\*"; DestDir: "{app}\r\Zhiyuan-build\lib\Python\"; Components: core; Flags: ignoreversion skipifsourcedoesntexist
+Source: "TempRelease\r\Zhiyuan-build\lib\Python\bin\*"; DestDir: "{app}\r\Zhiyuan-build\lib\Python\bin\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "TempRelease\r\Zhiyuan-build\lib\Python\DLLs\*"; DestDir: "{app}\r\Zhiyuan-build\lib\Python\DLLs\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "TempRelease\r\Zhiyuan-build\lib\Python\Lib\*"; DestDir: "{app}\r\Zhiyuan-build\lib\Python\Lib\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "TempRelease\r\Zhiyuan-build\lib\Python\Scripts\*"; DestDir: "{app}\r\Zhiyuan-build\lib\Python\Scripts\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "TempRelease\r\Zhiyuan-build\lib\Python\include\*"; DestDir: "{app}\r\Zhiyuan-build\lib\Python\include\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "TempRelease\r\Zhiyuan-build\lib\Python\Library\*"; DestDir: "{app}\r\Zhiyuan-build\lib\Python\Library\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "TempRelease\r\Zhiyuan-build\lib\Python\share\*"; DestDir: "{app}\r\Zhiyuan-build\lib\Python\share\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 ; === Qt Plugins in lib/QtPlugins (as per ZhiyuanLauncherSettingsToInstall.ini) ===
 ; Qt requires qwindows.dll for Windows GUI - without this, app will flash and exit
@@ -106,6 +110,9 @@ Source: "TempRelease\r\Zhiyuan-build\lib\QtPlugins\platforms\qminimal.dll"; Dest
 Source: "TempRelease\r\Zhiyuan-build\lib\QtPlugins\styles\*"; DestDir: "{app}\r\Zhiyuan-build\lib\QtPlugins\styles\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "TempRelease\r\Zhiyuan-build\lib\QtPlugins\imageformats\*"; DestDir: "{app}\r\Zhiyuan-build\lib\QtPlugins\imageformats\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 Source: "TempRelease\r\Zhiyuan-build\lib\QtPlugins\iconengines\*"; DestDir: "{app}\r\Zhiyuan-build\lib\QtPlugins\iconengines\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+
+; === CMakeCache.txt (required for module loading - makes Slicer treat build as development) ===
+Source: "TempRelease\r\Zhiyuan-build\CMakeCache.txt"; DestDir: "{app}\r\Zhiyuan-build\"; Components: core; Flags: ignoreversion skipifsourcedoesntexist
 
 ; === Launcher Settings INI files ===
 ; ZhiyuanApp-real.exe looks for INI in bin/ directory, so we place it there too
@@ -121,15 +128,21 @@ Source: "TempRelease\r\Zhiyuan-build\lib\*.dll"; DestDir: "{app}\r\Zhiyuan-build
 Source: "TempRelease\r\Zhiyuan-build\lib\*.pyd"; DestDir: "{app}\r\Zhiyuan-build\lib\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; === Slicer share directory ===
-Source: "TempRelease\r\Zhiyuan-build\share\**\*"; DestDir: "{app}\r\Zhiyuan-build\share\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "TempRelease\r\Zhiyuan-build\share\*"; DestDir: "{app}\r\Zhiyuan-build\share\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs
 ; Explicit SplashScreen (launcher hard requirement - MUST NOT be missing)
 Source: "TempRelease\r\Zhiyuan-build\share\Zhiyuan-5.9\SplashScreen.png"; DestDir: "{app}\r\Zhiyuan-build\share\Zhiyuan-5.9\"; Components: core; Flags: ignoreversion
 
 ; === Module compiled binaries (.pyd) - Cython protected ===
+; BrachyPlan.py must be kept alongside .pyd for Slicer module registration
+Source: "TempRelease\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\BrachyPlan.py"; DestDir: "{app}\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\"; Components: core; Flags: ignoreversion skipifsourcedoesntexist
 Source: "TempRelease\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\BrachyPlan*.pyd"; DestDir: "{app}\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\"; Components: core; Flags: ignoreversion
 Source: "TempRelease\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\SlicerCustomAppUtilities*.pyd"; DestDir: "{app}\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\"; Components: core; Flags: ignoreversion skipifsourcedoesntexist
 Source: "TempRelease\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\SubjectHierarchyPlugins\*.pyd"; DestDir: "{app}\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\SubjectHierarchyPlugins\"; Components: core; Flags: ignoreversion
 Source: "TempRelease\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\MarkupConstraints*.pyd"; DestDir: "{app}\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\"; Components: core; Flags: ignoreversion skipifsourcedoesntexist
+
+; === Pure .py Slicer framework modules (no .pyd, must keep as source) ===
+; Catch-all: ALL .py files in qt-scripted-modules and all subdirectories
+Source: "TempRelease\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\*.py"; DestDir: "{app}\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\"; Components: core; Flags: ignoreversion recursesubdirs skipifsourcedoesntexist
 
 ; === Plans package compiled modules ===
 Source: "TempRelease\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\plans\*.pyd"; DestDir: "{app}\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\plans\"; Components: core; Flags: ignoreversion skipifsourcedoesntexist
@@ -141,7 +154,7 @@ Source: "TempRelease\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\Resourc
 Source: "TempRelease\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\Resources\UI\*.pyd"; DestDir: "{app}\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\Resources\UI\"; Components: core; Flags: ignoreversion skipifsourcedoesntexist
 
 ; === Resources (Icons, QSS, JSON, etc.) ===
-Source: "TempRelease\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\Resources\**\*"; DestDir: "{app}\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\Resources\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
+Source: "TempRelease\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\Resources\*"; DestDir: "{app}\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\Resources\"; Components: core; Flags: ignoreversion recursesubdirs createallsubdirs skipifsourcedoesntexist
 
 ; === Setup configuration script ===
 Source: "TempRelease\setup_config.bat"; DestDir: "{app}\"; Components: core; Flags: ignoreversion skipifsourcedoesntexist
@@ -255,7 +268,7 @@ begin
             begin
                 RegWriteStringValue(HKCU, 'Environment', 'TOTALSEG_WEIGHTS_PATH',
                     ExpandConstant('{app}\r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules\plans\seg\total\nnunet\results'));
-                SendMessage(HWND_BROADCAST, WM_WININICHANGE, 0, 0);
+                PostMessage(HWND_BROADCAST, WM_WININICHANGE, 0, 0);
             end;
     end;
 end;

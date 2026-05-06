@@ -53,6 +53,9 @@
    </item>
    <item>
     <widget class="ctkCollapsibleButton" name="segmentationCollapsibleButton">
+     <property name="collapsed">
+      <bool>true</bool>
+     </property>
      <property name="text">
       <string>Segmentation</string>
      </property>
@@ -141,7 +144,7 @@
       <string>Planning Parameters</string>
      </property>
      <property name="collapsed">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_PlanningParams">
       <item>
@@ -507,7 +510,7 @@
          <string>Dose Constraints</string>
         </property>
         <property name="collapsed">
-         <bool>false</bool>
+         <bool>true</bool>
         </property>
         <layout class="QGridLayout" name="gridLayout_DoseConstraints">
          <item row="0" column="0">
@@ -858,7 +861,7 @@
       <string>Status</string>
      </property>
      <property name="collapsed">
-      <bool>false</bool>
+      <bool>true</bool>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <property name="spacing">

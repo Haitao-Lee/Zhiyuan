@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Zhiyuan (致远)** is an intelligent brachytherapy treatment planning platform built on [3D Slicer](https://slicer.org/). It provides AI-powered organ segmentation, dose prediction, and treatment optimization for brachytherapy procedures.
+**Zhiyuan (智源)** is an intelligent brachytherapy treatment planning platform built on [3D Slicer](https://slicer.org/). It provides AI-powered organ segmentation, dose prediction, and treatment optimization for brachytherapy procedures.
 
 - **Platform**: Windows 10/11 (64-bit), Linux
 - **Framework**: 3D Slicer (Qt-based medical imaging application)

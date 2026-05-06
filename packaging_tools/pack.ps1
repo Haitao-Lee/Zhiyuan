@@ -224,15 +224,18 @@ Get-ChildItem -Path $ModuleRoot -Filter "*.py" -Recurse -File | ForEach-Object {
     $isExcluded = $pyFile.Name -match '_backup\.py$' -or
                   $pyFile.FullName -match '\\plans\\' -and $pyFile.Name -match '^(brachy_plan|core|utilizations)\.py$' -or
                   $pyFile.Name -eq 'TotalSegmentator.py' -or
-                  ($pyFile.Name -eq 'BrachyPlan.py' -and $pydExists)
+                  ($pyFile.Name -eq 'BrachyPlan.py' -and $false)  # Never exclude BrachyPlan.py - Slicer needs it for module registration
+
+    # BrachyPlan.py MUST always be copied - Slicer needs .py for module registration
+    $alwaysKeep = $pyFile.Name -eq 'BrachyPlan.py'
 
     if ($isExcluded) {
         Write-Detail "  Excluded: $($pyFile.Name)"
-    } elseif (-not $pydExists) {
+    } elseif ($alwaysKeep -or -not $pydExists) {
         $relPath = $pyFile.FullName.Substring($ModuleRoot.Length)
         $destPath = Join-Path $SandboxDir "r\Zhiyuan-build\lib\Zhiyuan-5.9\qt-scripted-modules$relPath"
         Copy-WhitelistFile $pyFile.FullName $destPath "py" | Out-Null
-        Write-Detail "  Copied .py: $($pyFile.Name) (no compiled .pyd found)"
+        Write-Detail "  Copied .py: $($pyFile.Name)$(if ($alwaysKeep) { ' (always keep for Slicer registration)' } else { ' (no compiled .pyd found)' })"
     } else {
         Write-Detail "  Skipped .py with .pyd: $($pyFile.Name)"
     }
@@ -1095,6 +1098,14 @@ foreach ($binIni in $binIniFixFiles) {
             if ($line -match '<APPLAUNCHER_SETTINGS_DIR>/bin/Python' -and $line -notmatch '<APPLAUNCHER_SETTINGS_DIR>/\.\./bin/Python') {
                 $line = $line -replace '<APPLAUNCHER_SETTINGS_DIR>/bin/Python', '<APPLAUNCHER_SETTINGS_DIR>/../bin/Python'
             }
+            # Fix: SLICER_HOME=<APPLAUNCHER_SETTINGS_DIR> -> SLICER_HOME=<APPLAUNCHER_SETTINGS_DIR>/..
+            # This is critical: without this fix, SLICER_HOME resolves to bin/ instead of Zhiyuan-build/,
+            # causing module factory to search bin/lib/Zhiyuan-5.9/ (doesn't exist) instead of
+            # Zhiyuan-build/lib/Zhiyuan-5.9/ (where modules actually are).
+            if ($line -match 'SLICER_HOME=<APPLAUNCHER_SETTINGS_DIR>' -and $line -notmatch 'SLICER_HOME=<APPLAUNCHER_SETTINGS_DIR>/\.\.') {
+                $line = $line -replace 'SLICER_HOME=<APPLAUNCHER_SETTINGS_DIR>', 'SLICER_HOME=<APPLAUNCHER_SETTINGS_DIR>/..'
+                Write-Detail "    [SLICER_HOME FIX] Applied ../ prefix for SLICER_HOME in bin/ INI"
+            }
             $newLines += $line
         }
         $content = $newLines -join "`n"
@@ -1102,6 +1113,29 @@ foreach ($binIni in $binIniFixFiles) {
             Set-Content -Path $binIni -Value $content -Encoding UTF8 -ErrorAction SilentlyContinue
             Write-Detail "  Re-fixed bin/ INI paths: $($binIni.Substring($SandboxDir.Length))"
         }
+    }
+}
+
+# --- 3.6b.2: Fix PythonSlicer .ini PYTHONHOME ---
+# PythonSlicerLauncherSettings.ini is in lib/Python/bin/, so APPLAUNCHER_DIR = lib/Python/bin/
+# The .ini must set PYTHONHOME=<APPLAUNCHER_DIR>/.. (resolves to lib/Python)
+# NOT <APPLAUNCHER_DIR>/../lib/Python (resolves to lib/Python/lib/Python - WRONG)
+# NOT <APPLAUNCHER_SETTINGS_DIR>/lib/Python (resolves to lib/Python/bin/lib/Python - WRONG)
+Write-Detail "Fixing PythonSlicer .ini PYTHONHOME..."
+$pySlicerInis = @(
+    (Join-Path $SandboxDir "r\Zhiyuan-build\lib\Python\bin\PythonSlicerLauncherSettings.ini"),
+    (Join-Path $SandboxDir "r\Zhiyuan-build\lib\Python\bin\PythonSlicerLauncherSettingsToInstall.ini")
+)
+foreach ($pyIni in $pySlicerInis) {
+    if (-not (Test-Path $pyIni)) { continue }
+    $content = Get-Content $pyIni -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+    $originalContent = $content
+    # Fix wrong patterns: any PYTHONHOME that doesn't resolve to lib/Python
+    $content = $content -replace 'PYTHONHOME=<APPLAUNCHER_SETTINGS_DIR>/lib/Python', 'PYTHONHOME=<APPLAUNCHER_DIR>/..'
+    $content = $content -replace 'PYTHONHOME=<APPLAUNCHER_DIR>/../lib/Python', 'PYTHONHOME=<APPLAUNCHER_DIR>/..'
+    if ($content -ne $originalContent) {
+        Set-Content -Path $pyIni -Value $content -Encoding UTF8 -ErrorAction SilentlyContinue
+        Write-Detail "  Fixed PythonSlicer PYTHONHOME: $($pyIni.Substring($SandboxDir.Length))"
     }
 }
 
@@ -1141,11 +1175,10 @@ $pathReplacements = [ordered]@{
     "C:/LHT_workspace/code/Qt5.15/5.15.2/msvc2019_64/bin" = "<APPLAUNCHER_SETTINGS_DIR>/lib/QtPlugins"
     # Fix dev machine Qt path (backslash)
     "C:\LHT_workspace\code\Qt5.15\5.15.2\msvc2019_64\bin" = "<APPLAUNCHER_SETTINGS_DIR>/lib/QtPlugins"
-    # Fix ../lib/ paths (dev INI assumes launcher in bin/, but ours is at root)
-    # These are CORRECT for root-level INIs - DO NOT replace them!
-    # They will be fixed later for bin/ copies
-    # "../lib/Zhiyuan-5.9/qt-loadable-modules" is kept as-is
-    "../lib/Zhiyuan-5.9/qt-loadable-modules/Release" = "PRESERVE_ORIGINAL"
+    # Fix ../lib/ paths - use macro so they resolve correctly regardless of launcher location
+    # Previously kept as-is because dev INI assumes launcher in bin/, but our launcher is at root
+    "../lib/Zhiyuan-5.9/qt-loadable-modules" = "<APPLAUNCHER_SETTINGS_DIR>/lib/Zhiyuan-5.9/qt-loadable-modules"
+    "../lib/Zhiyuan-5.9/qt-loadable-modules/Release" = "<APPLAUNCHER_SETTINGS_DIR>/lib/Zhiyuan-5.9/qt-loadable-modules/Release"
     # Fix all external build paths to point to bin/Release (where DLLs were copied)
     "C:/Zhiyaun/r/VTK-build/bin/Release" = "<APPLAUNCHER_SETTINGS_DIR>/bin/Release"
     "C:/Zhiyaun/r/ITK-build/bin/Release" = "<APPLAUNCHER_SETTINGS_DIR>/bin/Release"
@@ -1251,6 +1284,106 @@ if (Test-Path $debugBatInSandbox) {
 }
 
 Write-Success "Path substitution complete ($totalReplacements files patched)"
+
+# ============================================================================
+# STEP 3.6b: Create CMakeCache.txt for Module Loading
+# Slicer uses CMakeCache.txt presence to determine intDir (development vs installed).
+# Without it, intDir="" and module factory misses qt-loadable-modules/Release/ subdirectory.
+# ============================================================================
+Write-Host ""
+Write-Host "=" * 70 -ForegroundColor DarkGray
+Write-Info "STEP 3.6b: Creating CMakeCache.txt for module loading"
+
+$cmakeCachePath = Join-Path $SandboxDir "r\Zhiyuan-build\CMakeCache.txt"
+if (-not (Test-Path $cmakeCachePath)) {
+    New-Item -Path $cmakeCachePath -ItemType File -Force | Out-Null
+    Write-Success "Created empty CMakeCache.txt (enables intDir=Release for module factory)"
+} else {
+    Write-Detail "CMakeCache.txt already exists"
+}
+
+# ============================================================================
+# STEP 3.6c: Copy CTK Designer Plugins for Custom Widget Loading
+# QUiLoader needs CTK designer plugins to instantiate ctkCollapsibleButton etc.
+# Source build has CTK-build/bin in QT_PLUGIN_PATH (which contains designer/ subdir).
+# Packaged build needs the designer plugins in bin/designer/.
+# ============================================================================
+Write-Host ""
+Write-Host "=" * 70 -ForegroundColor DarkGray
+Write-Info "STEP 3.6c: Copying CTK Designer Plugins"
+
+$ctkDesignerSrc = "C:\Zhiyaun\r\CTK-build\CTK-build\bin\designer"
+$designerDest = Join-Path $SandboxDir "r\Zhiyuan-build\bin\designer"
+
+if (Test-Path $ctkDesignerSrc) {
+    if (-not (Test-Path $designerDest)) {
+        New-Item -Path $designerDest -ItemType Directory -Force | Out-Null
+    }
+    $ctkDesignerDlls = Get-ChildItem -Path $ctkDesignerSrc -Filter "*.dll" -File
+    foreach ($dll in $ctkDesignerDlls) {
+        $destFile = Join-Path $designerDest $dll.Name
+        if (-not (Test-Path $destFile)) {
+            Copy-Item $dll.FullName $destFile -Force
+            Write-Detail "  Copied: $($dll.Name)"
+        }
+    }
+    Write-Success "CTK designer plugins copied to bin/designer/"
+} else {
+    Write-WarningMsg "CTK designer source not found: $ctkDesignerSrc"
+}
+
+# ============================================================================
+# STEP 3.6d: Add designer/ to QT_PLUGIN_PATH in Launcher INI Files
+# QUiLoader discovers custom widgets through Qt's plugin system.
+# The designer/ subdirectory must be in QT_PLUGIN_PATH.
+# ============================================================================
+Write-Host ""
+Write-Host "=" * 70 -ForegroundColor DarkGray
+Write-Info "STEP 3.6d: Adding designer/ to QT_PLUGIN_PATH in launcher INIs"
+
+$launcherInis = @(
+    (Join-Path $SandboxDir "r\Zhiyuan-build\ZhiyuanLauncherSettings.ini"),
+    (Join-Path $SandboxDir "r\Zhiyuan-build\ZhiyuanLauncherSettingsToInstall.ini")
+)
+
+foreach ($iniPath in $launcherInis) {
+    if (-not (Test-Path $iniPath)) { continue }
+
+    $lines = Get-Content $iniPath -Encoding UTF8
+    $inQtPlugin = $false
+    $qtPluginSize = 0
+    $maxIdx = 0
+    $hasDesigner = $false
+    $newLines = @()
+
+    foreach ($line in $lines) {
+        if ($line -match '^\[QT_PLUGIN_PATH\]') {
+            $inQtPlugin = $true
+        } elseif ($inQtPlugin -and $line -match '^(\d+)\\path=') {
+            $idx = [int]$Matches[1]
+            if ($idx -gt $maxIdx) { $maxIdx = $idx }
+            if ($line -match 'designer') { $hasDesigner = $true }
+        } elseif ($inQtPlugin -and $line -match '^size=(\d+)') {
+            $qtPluginSize = [int]$Matches[1]
+            $inQtPlugin = $false
+
+            if (-not $hasDesigner) {
+                $newIdx = $maxIdx + 1
+                $newLines += "$newIdx\path=<APPLAUNCHER_SETTINGS_DIR>/bin/designer"
+                $qtPluginSize++
+                $newLines += "size=$qtPluginSize"
+                Write-Detail "  Added designer/ path to $(Split-Path $iniPath -Leaf)"
+                continue
+            }
+        }
+        $newLines += $line
+    }
+
+    if (-not $hasDesigner) {
+        Set-Content -Path $iniPath -Value $newLines -Encoding UTF8
+    }
+}
+Write-Success "QT_PLUGIN_PATH designer/ path configured"
 
 # ============================================================================
 # STEP 3.7a: RENAME PHYSICAL FOLDERS - DISABLED
@@ -1374,18 +1507,24 @@ if (Test-Path $InnoSetupPath) {
 
         $issContent = $issContent.Replace("0000000000", $totalSize.ToString())
 
-        if (-not ($issContent -match "OutputBaseFilename")) {
-            $issContent = $issContent.Replace(
-                "[Setup]",
-                "[Setup]`nOutputBaseFilename=Zhiyuan-Installer-v$Version"
-            )
-        }
+        # Patch OutputDir to use absolute path (relative paths resolve from ISS location, not CWD)
+        # Use simple string replacement to avoid regex issues
+        $issContent = $issContent.Replace("OutputDir=..\releases", "OutputDir=$ReleaseDir")
+
+        # Always set versioned OutputBaseFilename
+        $issContent = $issContent.Replace("OutputBaseFilename=Zhiyuan-Installer", "OutputBaseFilename=Zhiyuan-Installer-v$Version")
 
         Set-Content -Path $tempIss -Value $issContent -Encoding UTF8
 
+        # Debug: verify the patched content
+        $checkContent = Get-Content $tempIss -Raw -Encoding UTF8
+        if ($checkContent -match "OutputDir=(.+)") {
+            Write-Detail "Patched OutputDir: $($Matches[1])"
+        }
+
         Write-Info "Compiling Inno Setup script..."
         $process = Start-Process -FilePath $InnoSetupPath `
-            -ArgumentList "`"$tempIss`" /O`"$ReleaseDir`" /DMyAppVersion=`"$Version`"" `
+            -ArgumentList "`"$tempIss`" /DMyAppVersion=`"$Version`"" `
             -WorkingDirectory $ProjectRoot `
             -PassThru -NoNewWindow -Wait
 
@@ -1431,8 +1570,10 @@ Write-Host ""
 Write-Host "=" * 70 -ForegroundColor DarkGray
 Write-Info "STEP 5: Cleanup"
 
-Remove-Item -Recurse -Force $SandboxDir -ErrorAction SilentlyContinue
-if (-not (Test-Path $SandboxDir)) { Write-Success "Sandbox removed cleanly" }
+# PRESERVE TempRelease for user inspection (do not delete)
+# Remove-Item -Recurse -Force $SandboxDir -ErrorAction SilentlyContinue
+# if (-not (Test-Path $SandboxDir)) { Write-Success "Sandbox removed cleanly" }
+Write-Success "Sandbox preserved at $SandboxDir (not deleted per user request)"
 
 # ============================================================================
 # Final Summary
