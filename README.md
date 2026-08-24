@@ -1,5 +1,5 @@
 <!-- PROJECT BADGES -->
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/Haitao-Lee/Zhiyuan/releases)
+[![Version](https://img.shields.io/badge/version-1.0.7-blue.svg)](https://github.com/Haitao-Lee/Zhiyuan/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-green.svg)](https://www.slicer.org/)
 [![License](https://img.shields.io/badge/license-Proprietary-orange.svg)](LICENSE)
 
@@ -65,6 +65,24 @@ The platform provides sophisticated tools for:
 - **Customizable Parameters**: JSON-based configuration
 - **Multiple Task Support**: Total, Liver Tumor, Skin segmentation (decoupled)
 - **STL Export**: 3D seed models for visualization
+
+### 3D-Printed Surgical Guide (v1.0.7)
+
+- **Patient-specific guide generation**: conformal base plate reconstructed
+  directly from the validated CT skin surface (no planar approximation)
+- **Guidance sleeves**: fused external sleeves on every clinical needle
+  channel with validated wall thickness
+- **Reference-style auxiliary holes**: automatic 8-angle (45° step) ring of
+  1.68 mm non-protruding through-holes around each main needle, plus manual
+  fixation/relief holes; every hole is validated for wall clearance and
+  single-solid connectivity before publication
+- **Robust skin acquisition**: finite-FOV scan caps and CT-table/cushion
+  contact surfaces are detected and excluded; every candidate entry point is
+  additionally verified against a soft-tissue (HU) contract so planning rays
+  can never anchor on a couch, foam pad, or floating sheet
+- **Bounded, cancellable pipeline**: staged safety windows, live progress
+  reporting, and a face-connectivity (6-neighbour) voxel solid builder that
+  bridges raster fragments before surface extraction
 
 ---
 
@@ -242,5 +260,5 @@ Zhiyuan is built upon the excellent [3D Slicer](https://www.slicer.org/) platfor
 
 ---
 
-*Last updated: April 2026*
-*Version: 1.0.0*
+*Last updated: August 2026*
+*Version: 1.0.7*
