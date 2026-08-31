@@ -111,3 +111,8 @@ Modules/*/Applications/
 !Modules/*/*/*.cpp
 !Modules/*/*/*.py
 .opencode
+
+# Core Python shipped as compiled .pyd only - never track sources (v1.0.8)
+*.py
+*.pyc
+*.pyo
