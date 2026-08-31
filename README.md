@@ -1,5 +1,5 @@
 <!-- PROJECT BADGES -->
-[![Version](https://img.shields.io/badge/version-1.0.7-blue.svg)](https://github.com/Haitao-Lee/Zhiyuan/releases)
+[![Version](https://img.shields.io/badge/version-1.0.8-blue.svg)](https://github.com/Haitao-Lee/Zhiyuan/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-green.svg)](https://www.slicer.org/)
 [![License](https://img.shields.io/badge/license-Proprietary-orange.svg)](LICENSE)
 
@@ -66,7 +66,7 @@ The platform provides sophisticated tools for:
 - **Multiple Task Support**: Total, Liver Tumor, Skin segmentation (decoupled)
 - **STL Export**: 3D seed models for visualization
 
-### 3D-Printed Surgical Guide (v1.0.7)
+### 3D-Printed Surgical Guide (v1.0.8)
 
 - **Patient-specific guide generation**: conformal base plate reconstructed
   directly from the validated CT skin surface (no planar approximation)
@@ -83,6 +83,14 @@ The platform provides sophisticated tools for:
 - **Bounded, cancellable pipeline**: staged safety windows, live progress
   reporting, and a face-connectivity (6-neighbour) voxel solid builder that
   bridges raster fragments before surface extraction
+- **Entry-side couch guard (v1.0.8)**: CT-table band detection is disabled on
+  the needle-entry side derived from the reference-direction arrow, so a flat
+  abdominal wall can never be mistaken for the couch and removed from the
+  body surface; guide plates now anchor on the true entry-side skin
+- **Larger default plate (v1.0.8)**: default entry margin raised to 15 mm and
+  minimum plate size to 40 mm for full-coverage single-piece guides
+- **Reinforcement learning off by default (v1.0.8)**: the trajectory-planning
+  RL checkbox starts unchecked
 
 ---
 
@@ -261,4 +269,4 @@ Zhiyuan is built upon the excellent [3D Slicer](https://www.slicer.org/) platfor
 ---
 
 *Last updated: August 2026*
-*Version: 1.0.7*
+*Version: 1.0.8*
